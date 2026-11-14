@@ -1,7 +1,22 @@
 data/raw/
 data/processed/
 data/ood/
+data/splits/
+backup/
+experiments/
 artifacts/embeddings*.npz
+
+# local pre-i18n snapshot, kept on disk only
+/frontend/app.js.pre-i18n
+/tatus
+
+# secrets and local credentials
+.env
+.env.*
+*.env
+*.pem
+*.key
+secrets/
 __pycache__/
 *.pyc
 .venv/
