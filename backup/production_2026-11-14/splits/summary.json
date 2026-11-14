@@ -1,0 +1,46 @@
+{
+  "seed": 42,
+  "image_size": 256,
+  "total": 10015,
+  "splits": {
+    "cal": {
+      "images": 1968,
+      "lesions": 1495,
+      "class_counts": {
+        "nv": 1319,
+        "mel": 222,
+        "bkl": 206,
+        "bcc": 108,
+        "akiec": 63,
+        "vasc": 28,
+        "df": 22
+      }
+    },
+    "test": {
+      "images": 2025,
+      "lesions": 1497,
+      "class_counts": {
+        "nv": 1327,
+        "mel": 234,
+        "bkl": 230,
+        "bcc": 111,
+        "akiec": 68,
+        "vasc": 32,
+        "df": 23
+      }
+    },
+    "train": {
+      "images": 6022,
+      "lesions": 4478,
+      "class_counts": {
+        "nv": 4059,
+        "bkl": 663,
+        "mel": 657,
+        "bcc": 295,
+        "akiec": 196,
+        "vasc": 82,
+        "df": 70
+      }
+    }
+  }
+}

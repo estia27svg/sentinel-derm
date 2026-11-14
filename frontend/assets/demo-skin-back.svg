@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="Fictional illustration of a second skin spot">
+  <defs>
+    <radialGradient id="skin2" cx="58%" cy="40%" r="84%">
+      <stop offset="0" stop-color="#f3d6bd" />
+      <stop offset="0.58" stop-color="#e8c2a3" />
+      <stop offset="1" stop-color="#cfa185" />
+    </radialGradient>
+    <radialGradient id="spot2" cx="40%" cy="34%" r="74%">
+      <stop offset="0" stop-color="#7b5a44" />
+      <stop offset="0.55" stop-color="#5d3c2a" />
+      <stop offset="1" stop-color="#43291a" />
+    </radialGradient>
+    <radialGradient id="vignette2" cx="50%" cy="46%" r="74%">
+      <stop offset="0.5" stop-color="#3a2418" stop-opacity="0" />
+      <stop offset="1" stop-color="#3a2418" stop-opacity="0.28" />
+    </radialGradient>
+    <pattern id="pores2" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="5" cy="7" r="1" fill="#8d5f48" opacity="0.14" />
+      <circle cx="17" cy="15" r="0.8" fill="#8d5f48" opacity="0.12" />
+      <circle cx="11" cy="21" r="0.7" fill="#fde7d3" opacity="0.18" />
+      <circle cx="21" cy="3" r="0.7" fill="#fde7d3" opacity="0.14" />
+    </pattern>
+    <filter id="soft2" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur stdDeviation="2" />
+    </filter>
+    <filter id="softer2" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="8" />
+    </filter>
+  </defs>
+
+  <rect width="640" height="480" fill="url(#skin2)" />
+  <rect width="640" height="480" fill="url(#pores2)" />
+
+  <path d="M0 104 C118 82 210 108 330 122 C458 138 552 112 640 128 L640 0 L0 0 Z" fill="#c99578" opacity="0.2" filter="url(#softer2)" />
+  <path d="M0 396 C146 360 268 388 410 366 C516 350 586 362 640 378 L640 480 L0 480 Z" fill="#c99578" opacity="0.22" filter="url(#softer2)" />
+
+  <path d="M196 236 C222 202 272 196 304 218 C338 242 344 286 318 314 C292 342 244 344 216 320 C188 296 176 264 196 236 Z" fill="url(#spot2)" opacity="0.92" filter="url(#soft2)" />
+  <path d="M204 244 C226 218 264 214 290 232 C314 250 318 282 300 302 C280 324 246 324 226 306 C206 288 192 262 204 244 Z" fill="#4e2f1e" opacity="0.5" />
+  <ellipse cx="352" cy="204" rx="10" ry="8" fill="#75513b" opacity="0.6" filter="url(#soft2)" />
+  <ellipse cx="168" cy="318" rx="6" ry="4.5" fill="#7d563f" opacity="0.42" filter="url(#soft2)" />
+
+  <path d="M382 110 C432 122 478 116 522 128" fill="none" stroke="#b88266" stroke-width="1" opacity="0.3" />
+  <path d="M404 306 C458 314 506 306 558 318" fill="none" stroke="#b88266" stroke-width="1" opacity="0.26" />
+  <path d="M88 250 C132 260 168 254 206 266" fill="none" stroke="#b88266" stroke-width="1" opacity="0.26" />
+
+  <rect width="640" height="480" fill="url(#vignette2)" />
+</svg>

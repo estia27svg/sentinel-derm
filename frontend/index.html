@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sentinel Derm - uncertainty-aware skin triage</title>
+    <meta
+      name="description"
+      content="A dermatology triage prototype that returns conformal prediction sets and abstains on ambiguous or out-of-domain images."
+    />
+    <meta name="theme-color" content="#F6F1E6" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23F6F1E6'/%3E%3Cpath d='M16 6l8 3v7c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V9l8-3z' fill='none' stroke='%231F4A3A' stroke-width='1.6'/%3E%3Ccircle cx='16' cy='15' r='3.2' fill='%231F4A3A'/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Instrument+Sans:ital,wght@0,400..600;1,400..600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#analyze" data-view="analyze" data-i18n-aria-label="brand.home" aria-label="Sentinel Derm home">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M16 4l9 3.4v7.8c0 5.6-3.8 9.4-9 11.2-5.2-1.8-9-5.6-9-11.2V7.4L16 4z" />
+          <circle cx="16" cy="15" r="3.6" />
+        </svg>
+        <span>Sentinel<b>Derm</b></span>
+      </a>
+      <nav class="tabs" data-i18n-aria-label="nav.label" aria-label="Views">
+        <button class="tab is-active" data-view="analyze" data-i18n="nav.analyze">Analyze</button>
+        <button class="tab" data-view="journal" data-i18n="nav.journal">Journal</button>
+        <button class="tab" data-view="evidence" data-i18n="nav.evidence">Evidence</button>
+        <button class="tab" data-view="method" data-i18n="nav.method">Method</button>
+      </nav>
+      <div class="topbar-tools">
+        <select class="lang-select" id="language-select" data-i18n-aria-label="lang.label" aria-label="Language"></select>
+        <div class="topbar-meta" id="topbar-meta" aria-live="polite"></div>
+      </div>
+    </header>
+
+    <main>
+      <!-- ============================ ANALYZE ============================ -->
+      <section class="view is-active" id="view-analyze">
+        <div class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow" data-i18n="hero.eyebrow"><span class="eyebrow-rule"></span>AI &times; Healthcare &middot; DSH Hacks V2</p>
+            <h1 data-i18n-html="hero.title">Triage that knows <em>when it does not know.</em></h1>
+            <p class="lede" data-i18n-html="hero.lede">
+              A dermatology screening aid built on <strong>conformal prediction</strong>. Instead of forcing one
+              label, it returns the set of diagnoses that cannot be ruled out at a 90% coverage guarantee &mdash; and
+              refuses to answer when the image is ambiguous, blurry, or not a dermoscopic field.
+            </p>
+            <div class="hero-stats" id="hero-stats">
+              <div class="stat"><span class="stat-value">&mdash;</span><span class="stat-label">loading</span></div>
+            </div>
+            <div class="hero-demo">
+              <button class="primary-button demo-cta" id="try-demo" type="button">
+                <span data-i18n="demo.try">Try Demo</span>
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.6 4.2L12.4 8l-3.8 3.8" /></svg>
+              </button>
+              <span class="hero-demo-note" data-i18n="demo.tryNote">Fictional images · no upload · no personal data</span>
+            </div>
+            <p class="hero-note" data-i18n="hero.note">
+              Research prototype &middot; CPU inference &middot; images are analysed in memory and never stored
+            </p>
+          </div>
+
+          <figure class="hero-plates" data-i18n-aria-label="hero.figures" aria-label="Example dermoscopic fields from the held-out test set">
+            <div class="plate plate-main">
+              <img src="/static/assets/field-melanoma.jpg" data-i18n-alt="hero.fig1alt" alt="Dermoscopic field of a melanoma" />
+              <figcaption data-i18n-html="hero.fig1caption"><span>Fig. 01</span>Melanoma &middot; dermoscopic field</figcaption>
+            </div>
+            <div class="plate plate-inset">
+              <img src="/static/assets/field-nevus.jpg" data-i18n-alt="hero.fig2alt" alt="Dermoscopic field of a melanocytic nevus" />
+              <figcaption data-i18n-html="hero.fig2caption"><span>Fig. 02</span>Melanocytic nevus</figcaption>
+            </div>
+            <span class="plate-register" aria-hidden="true" data-i18n="hero.register">HAM10000 &middot; 10,015 fields</span>
+          </figure>
+        </div>
+
+        <div class="hero-rail" aria-hidden="true">
+          <span data-i18n="rail.calibrated">Calibrated uncertainty</span>
+          <span data-i18n="rail.coverage">Class-conditional coverage</span>
+          <span data-i18n="rail.ood">Out-of-domain rejection</span>
+          <span data-i18n="rail.lesion">Lesion-level evaluation</span>
+        </div>
+
+        <div class="workspace">
+          <div class="panel input-panel">
+            <div class="panel-head">
+              <div class="panel-title">
+                <span class="panel-index">01</span>
+                <h2 data-i18n="panel.submit">Submit a field</h2>
+              </div>
+              <span class="hint" id="submit-hint" data-i18n="hint.phone">Guidance only</span>
+            </div>
+
+            <div class="mode-switch" role="group" data-i18n-aria-label="mode.label" aria-label="Analysis mode">
+              <button type="button" class="mode-option is-active" data-mode="smartphone" data-i18n="mode.phone">Phone photo guidance</button>
+              <button type="button" class="mode-option" data-mode="dermoscopy">
+                <span data-i18n="mode.derm">Dermoscopic analysis</span>
+                <em data-i18n="mode.experimental">Experimental</em>
+              </button>
+            </div>
+            <p class="mode-note" id="mode-note"></p>
+
+            <label class="dropzone" id="dropzone" for="file-input" tabindex="0">
+              <input id="file-input" type="file" accept="image/*" hidden />
+              <svg class="dropzone-icon" viewBox="0 0 48 48" aria-hidden="true">
+                <rect x="6" y="9" width="36" height="30" rx="5" />
+                <path d="M6 33l10-9 7 6 6-5 13 11" />
+                <circle cx="33" cy="17" r="2.6" />
+              </svg>
+              <strong id="drop-title" data-i18n="drop.phoneTitle">Drop a smartphone skin photo, or browse</strong>
+              <span id="drop-meta" data-i18n="drop.phoneMeta">JPEG or PNG &middot; up to 12 MB &middot; guidance only</span>
+            </label>
+
+            <div class="preview-wrap" id="preview-wrap" hidden>
+              <img id="preview" data-i18n-alt="preview.alt" alt="Uploaded lesion preview" />
+              <div class="preview-actions">
+                <span id="preview-name" class="preview-name"></span>
+                <button class="ghost-button" id="clear-button" type="button" data-i18n="preview.replace">Replace image</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel result-panel" id="result-panel">
+            <div class="empty-state" id="empty-state">
+              <div class="empty-graphic" aria-hidden="true">
+                <span class="ring"></span><span class="ring ring-2"></span>
+                <span class="cross hair-x"></span><span class="cross hair-y"></span>
+                <span class="dot"></span>
+              </div>
+              <p class="empty-kicker" data-i18n="empty.kicker">Awaiting a field</p>
+              <h2 data-i18n="empty.title">No analysis yet</h2>
+              <p data-i18n="empty.body">
+                Upload a lesion image or pick a sample case. The model returns a prediction set, a referral tier,
+                and an explanation of what it could and could not rule out.
+              </p>
+              <ul class="empty-list" data-i18n-html="empty.list">
+                <li><b>90%</b> coverage guarantee on held-out data</li>
+                <li><b>Abstains</b> when the differential is ambiguous</li>
+                <li><b>Rejects</b> images outside the dermoscopic domain</li>
+              </ul>
+            </div>
+            <div id="result-body" hidden></div>
+          </div>
+        </div>
+
+        <div class="panel samples-panel" id="samples-panel" hidden>
+          <div class="samples-head">
+            <div class="panel-title">
+              <span class="panel-index">02</span>
+              <h3 data-i18n="samples.title">Sample fields from the held-out test split</h3>
+            </div>
+            <span class="hint" data-i18n="samples.hint">click any field to run</span>
+          </div>
+          <div class="samples" id="samples" aria-live="polite">
+            <div class="samples-loading" data-i18n="samples.loading">Loading cases&hellip;</div>
+          </div>
+        </div>
+
+        <div class="panel abcde-panel">
+          <div class="panel-head">
+            <div class="panel-title">
+              <span class="panel-index">03</span>
+              <h2 data-i18n="abcde.title">ABCDE self-check</h2>
+            </div>
+            <span class="hint" data-i18n="abcde.hint">Tap a letter</span>
+          </div>
+          <p class="body-copy" data-i18n="abcde.lede">
+            ABCDE is a simple way to notice skin changes. Use it to describe what you see, not to decide whether a
+            spot is safe.
+          </p>
+          <div class="abcde-guide">
+            <div class="abcde-tabs" role="tablist" id="abcde-tabs" data-i18n-aria-label="abcde.title" aria-label="ABCDE">
+              <button type="button" class="abcde-tab is-active" role="tab" aria-selected="true" data-letter="a">
+                <b>A</b><span data-i18n="abcde.a.short">Asymmetry</span>
+              </button>
+              <button type="button" class="abcde-tab" role="tab" aria-selected="false" data-letter="b">
+                <b>B</b><span data-i18n="abcde.b.short">Border</span>
+              </button>
+              <button type="button" class="abcde-tab" role="tab" aria-selected="false" data-letter="c">
+                <b>C</b><span data-i18n="abcde.c.short">Color</span>
+              </button>
+              <button type="button" class="abcde-tab" role="tab" aria-selected="false" data-letter="d">
+                <b>D</b><span data-i18n="abcde.d.short">Diameter</span>
+              </button>
+              <button type="button" class="abcde-tab" role="tab" aria-selected="false" data-letter="e">
+                <b>E</b><span data-i18n="abcde.e.short">Evolution</span>
+              </button>
+            </div>
+            <div class="abcde-detail" id="abcde-detail" role="tabpanel" aria-live="polite">
+              <span class="abcde-letter" id="abcde-letter" aria-hidden="true">A</span>
+              <h3 id="abcde-term">Asymmetry</h3>
+              <p id="abcde-body"></p>
+              <p class="abcde-check"><span data-i18n="abcde.promptLabel">What to look for</span><span id="abcde-prompt"></span></p>
+            </div>
+          </div>
+          <p class="abcde-disclaimer">
+            <strong data-i18n="abcde.disclaimerTitle">Awareness, not diagnosis.</strong>
+            <span data-i18n="abcde.disclaimer">
+              These signs are general awareness guidelines, not a diagnostic test.
+            </span>
+          </p>
+        </div>
+      </section>
+
+      <!-- ============================= JOURNAL =========================== -->
+      <section class="view" id="view-journal">
+        <div class="section-head">
+          <p class="eyebrow" data-i18n="journal.eyebrow"><span class="eyebrow-rule"></span>Private, on-device record</p>
+          <h1 data-i18n-html="journal.title">Your skin <em>journal.</em></h1>
+          <p class="lede" data-i18n="journal.lede">
+            Save photos and short notes over time so you can describe changes to a clinician. Everything stays in this
+            browser on this device.
+          </p>
+        </div>
+
+        <div class="evidence-warning journal-privacy" data-i18n-html="journal.privacy">
+          <strong>Private by design:</strong> journal photos and notes are stored only in this browser using IndexedDB.
+          They are never uploaded to the server.
+        </div>
+
+        <div class="panel journal-panel">
+          <div class="panel-head">
+            <div class="panel-title">
+              <span class="panel-index">01</span>
+              <h2 data-i18n="journal.formTitle">New entry</h2>
+            </div>
+            <span class="hint" data-i18n="journal.localTag">Stored locally</span>
+          </div>
+          <form class="journal-form" id="journal-form">
+            <label class="journal-photo" for="journal-file">
+              <input id="journal-file" type="file" accept="image/*" hidden />
+              <img id="journal-preview" alt="" hidden />
+              <span class="journal-photo-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48"><rect x="6" y="9" width="36" height="30" rx="5" /><path d="M6 33l10-9 7 6 6-5 13 11" /><circle cx="33" cy="17" r="2.6" /></svg>
+              </span>
+              <span id="journal-photo-text" data-i18n="journal.choose">Choose a photo</span>
+            </label>
+            <div class="journal-fields">
+              <label class="journal-field">
+                <span data-i18n="journal.date">Date</span>
+                <input id="journal-date" type="date" required />
+              </label>
+              <label class="journal-field">
+                <span data-i18n="journal.note">Notes (optional)</span>
+                <textarea id="journal-note" rows="3" maxlength="280" data-i18n-placeholder="journal.notePlaceholder" placeholder="Where is it, what changed, how long has it been there…"></textarea>
+              </label>
+              <button class="primary-button" id="journal-save" type="submit" disabled data-i18n="journal.save">Save entry</button>
+              <p class="journal-status" id="journal-status" role="status"></p>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel journal-list-panel">
+          <div class="panel-head">
+            <div class="panel-title">
+              <span class="panel-index">02</span>
+              <h2 data-i18n="journal.entriesTitle">Saved entries</h2>
+            </div>
+            <span class="hint" id="journal-count"></span>
+          </div>
+          <p class="journal-hint" data-i18n="journal.viewHint">Tap a photo to view it larger</p>
+          <div class="journal-entries" id="journal-entries" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <!-- ============================== DEMO ============================= -->
+      <section class="view" id="view-demo" aria-labelledby="demo-title">
+        <div class="section-head demo-head">
+          <p class="eyebrow">
+            <span class="eyebrow-rule"></span><span data-i18n="demo.eyebrow">Guided product tour</span>
+          </p>
+          <h1 id="demo-title" data-i18n-html="demo.title">Explore Sentinel Derm <em>with fictional data.</em></h1>
+          <p class="lede" data-i18n="demo.lede">
+            Walk through a smartphone photo check, practise the ABCDE signs, and preview a sample journal. Every image
+            and entry here is made up for the tour.
+          </p>
+          <div class="demo-actions">
+            <button class="primary-button" id="demo-start" type="button" data-i18n="demo.start">Start with the phone check</button>
+            <button class="ghost-button" id="demo-restart" type="button" data-i18n="demo.restart">Restart tour</button>
+          </div>
+        </div>
+
+        <div class="evidence-warning demo-notice" data-i18n-html="demo.notice">
+          <strong>Demo data only.</strong> These examples are fabricated for the tour. They are not medical results, not
+          a diagnosis, and never enter your real journal.
+        </div>
+
+        <nav class="demo-jump" data-i18n-aria-label="demo.jumpLabel" aria-label="Demo sections">
+          <button type="button" class="demo-jump-link" data-demo-jump="demo-phone" data-i18n="demo.jumpPhone">01 · Phone check</button>
+          <button type="button" class="demo-jump-link" data-demo-jump="demo-abcde" data-i18n="demo.jumpAbcde">02 · ABCDE</button>
+          <button type="button" class="demo-jump-link" data-demo-jump="demo-journal" data-i18n="demo.jumpJournal">03 · Journal</button>
+        </nav>
+
+        <div class="panel demo-panel" id="demo-phone">
+          <div class="panel-head">
+            <div class="panel-title">
+              <span class="panel-index">01</span>
+              <h2 data-i18n="demo.phone.title">Smartphone photo walkthrough</h2>
+            </div>
+            <span class="hint" data-i18n="demo.simulated">Simulated example</span>
+          </div>
+          <p class="body-copy" data-i18n="demo.phone.body">
+            Choose an example photo condition and run the quality check. The result reports readability, focus,
+            lighting, and whether skin is visible — never a diagnosis.
+          </p>
+
+          <div class="demo-phone-grid">
+            <div class="demo-stage">
+              <div class="demo-photo-frame" id="demo-photo-frame" data-scenario="good">
+                <img
+                  id="demo-photo"
+                  src="/static/assets/demo-skin-arm.svg"
+                  data-i18n-alt="demo.phone.illustrationAlt"
+                  alt="Fictional illustration of a skin spot, used only for the demo"
+                />
+                <span class="demo-photo-tag" data-i18n="demo.phone.illustrationTag">Illustration · not a patient photo</span>
+              </div>
+
+              <div class="demo-scenarios" role="group" data-i18n-aria-label="demo.phone.scenarioLabel" aria-label="Example photo condition">
+                <button type="button" class="demo-scenario is-active" data-demo-scenario="good" aria-pressed="true">
+                  <span data-i18n="demo.phone.good">Well lit</span>
+                </button>
+                <button type="button" class="demo-scenario" data-demo-scenario="dim" aria-pressed="false">
+                  <span data-i18n="demo.phone.dim">Low light</span>
+                </button>
+                <button type="button" class="demo-scenario" data-demo-scenario="blurry" aria-pressed="false">
+                  <span data-i18n="demo.phone.blurry">Blurry</span>
+                </button>
+              </div>
+              <p class="demo-scenario-hint" id="demo-scenario-hint"></p>
+              <button class="primary-button" id="demo-run" type="button" data-i18n="demo.phone.run">Run example check</button>
+            </div>
+
+            <div class="demo-phone-result" id="demo-phone-result" aria-live="polite">
+              <div class="demo-result-empty">
+                <p class="section-label" data-i18n="demo.phone.resultEmptyTitle">Example result</p>
+                <p class="body-copy" data-i18n="demo.phone.resultEmpty">
+                  Run the check to see the kind of quality feedback a smartphone photo receives.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel demo-panel" id="demo-abcde">
+          <div class="panel-head">
+            <div class="panel-title">
+              <span class="panel-index">02</span>
+              <h2 data-i18n="demo.abcde.title">Practise the ABCDE check.</h2>
+            </div>
+            <span class="hint" data-i18n="demo.abcde.eyebrow">ABCDE practice</span>
+          </div>
+          <p class="body-copy" data-i18n="demo.abcde.body">
+            Tap each letter to see what to look for, plus a fictional example observation. This is awareness education,
+            not a diagnostic test.
+          </p>
+
+          <div class="demo-abcde-layout">
+            <figure class="demo-abcde-figure">
+              <img
+                src="/static/assets/demo-skin-back.svg"
+                data-i18n-alt="demo.phone.illustrationAlt"
+                alt="Fictional illustration of a skin spot, used only for the demo"
+              />
+              <figcaption>
+                <span data-i18n="demo.abcde.figureCaption">Fictional practice spot</span>
+                <em data-i18n="demo.phone.illustrationTag">Illustration · not a patient photo</em>
+              </figcaption>
+            </figure>
+
+            <div class="abcde-guide">
+              <div class="abcde-tabs" role="tablist" data-i18n-aria-label="demo.abcde.title" aria-label="ABCDE practice">
+                <button type="button" class="abcde-tab is-active" role="tab" aria-selected="true" data-demo-letter="a">
+                  <b>A</b><span data-i18n="abcde.a.short">Asymmetry</span>
+                </button>
+                <button type="button" class="abcde-tab" role="tab" aria-selected="false" data-demo-letter="b">
+                  <b>B</b><span data-i18n="abcde.b.short">Border</span>
+                </button>
+                <button type="button" class="abcde-tab" role="tab" aria-selected="false" data-demo-letter="c">
+                  <b>C</b><span data-i18n="abcde.c.short">Color</span>
+                </button>
+                <button type="button" class="abcde-tab" role="tab" aria-selected="false" data-demo-letter="d">
+                  <b>D</b><span data-i18n="abcde.d.short">Diameter</span>
+                </button>
+                <button type="button" class="abcde-tab" role="tab" aria-selected="false" data-demo-letter="e">
+                  <b>E</b><span data-i18n="abcde.e.short">Evolution</span>
+                </button>
+              </div>
+              <div class="abcde-detail" id="demo-abcde-detail" role="tabpanel" aria-live="polite">
+                <span class="abcde-letter" id="demo-abcde-letter" aria-hidden="true">A</span>
+                <h3 id="demo-abcde-term">Asymmetry</h3>
+                <p id="demo-abcde-body"></p>
+                <p class="abcde-check">
+                  <span data-i18n="abcde.promptLabel">What to look for</span><span id="demo-abcde-prompt"></span>
+                </p>
+                <p class="demo-abcde-obs">
+                  <span data-i18n="demo.abcde.obsLabel">Example observation</span><span id="demo-abcde-obs"></span>
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <p class="abcde-disclaimer">
+            <strong data-i18n="abcde.disclaimerTitle">Awareness, not diagnosis.</strong>
+            <span data-i18n="abcde.disclaimer">
+              These signs are general awareness guidelines, not a diagnostic test.
+            </span>
+          </p>
+        </div>
+
+        <div class="panel demo-panel" id="demo-journal">
+          <div class="panel-head">
+            <div class="panel-title">
+              <span class="panel-index">03</span>
+              <h2 data-i18n="demo.journal.title">A record you can compare over time.</h2>
+            </div>
+            <span class="hint" data-i18n="demo.journal.hint">Demo entries</span>
+          </div>
+          <p class="body-copy" data-i18n="demo.journal.body">
+            Two made-up entries show how photos and short notes sit side by side. Your real journal stays separate and
+            never includes demo data.
+          </p>
+          <div class="journal-entries demo-journal-entries" id="demo-journal-entries"></div>
+          <p class="demo-fineprint" data-i18n="demo.journal.note">
+            These two entries are not saved and never appear in your real journal.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============================ EVIDENCE =========================== -->
+      <section class="view" id="view-evidence">
+        <div class="section-head">
+          <p class="eyebrow" data-i18n="evidence.eyebrow"><span class="eyebrow-rule"></span>Held-out evaluation</p>
+          <h1 data-i18n-html="evidence.title">Every claim, <em>measured.</em></h1>
+          <p class="lede" data-i18n-html="evidence.lede">
+            All numbers below come from images the model never saw during training, calibration, or model selection.
+            Splits are made by <strong>lesion</strong>, not by image, so near-duplicate photographs cannot leak
+            between sets.
+          </p>
+        </div>
+
+        <div class="evidence-warning" id="evidence-scope" data-i18n-html="evidence.scope"></div>
+        <div class="evidence-warning" id="evidence-warning" hidden></div>
+
+        <div class="metric-grid" id="metric-grid"></div>
+
+        <div class="panel howto-panel">
+          <div class="panel-head">
+            <div class="panel-title">
+              <h2 data-i18n="evidence.howToTitle">How to read these numbers</h2>
+            </div>
+          </div>
+          <div class="howto-grid">
+            <div class="howto-item">
+              <h3 data-i18n="evidence.howToCoverageTitle">Coverage</h3>
+              <p data-i18n="evidence.howToCoverage">
+                How often the true diagnosis is inside the returned set. A 90% target means at least 9 in 10 cases on
+                held-out data. It is not the chance that a single answer is correct.
+              </p>
+            </div>
+            <div class="howto-item">
+              <h3 data-i18n="evidence.howToAccuracyTitle">Accuracy and recall</h3>
+              <p data-i18n="evidence.howToAccuracy">
+                Accuracy is the share of all images where the top label is correct. Recall is the share of a class that
+                the model catches; melanoma recall matters most in screening.
+              </p>
+            </div>
+            <div class="howto-item">
+              <h3 data-i18n="evidence.howToSetTitle">Set size and abstention</h3>
+              <p data-i18n="evidence.howToSet">
+                One diagnosis is a committed call. Two or more is an abstention because the model cannot separate them.
+                A larger average set means more uncertainty.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-grid" id="chart-grid">
+          <figure class="chart-card">
+            <div class="chart-copy">
+              <span class="figure-index" data-i18n="fig03.index">Fig. 03</span>
+              <h3 data-i18n="fig03.title">Coverage guarantee holds</h3>
+              <p data-i18n="fig03.body">Requested coverage versus the coverage actually achieved on the test split.</p>
+            </div>
+            <img src="/plots/coverage_sweep.png" data-i18n-alt="fig03.alt" alt="Empirical coverage versus target coverage" loading="lazy" />
+          </figure>
+          <figure class="chart-card">
+            <div class="chart-copy">
+              <span class="figure-index" data-i18n="fig04.index">Fig. 04</span>
+              <h3 data-i18n="fig04.title">Risk&ndash;coverage trade-off</h3>
+              <p data-i18n="fig04.body">Accuracy among the cases the model answers, as the answered fraction grows.</p>
+            </div>
+            <img src="/plots/risk_coverage.png" data-i18n-alt="fig04.alt" alt="Accuracy versus fraction of cases answered" loading="lazy" />
+          </figure>
+          <figure class="chart-card">
+            <div class="chart-copy">
+              <span class="figure-index" data-i18n="fig05.index">Fig. 05</span>
+              <h3 data-i18n="fig05.title">How often it commits</h3>
+              <p data-i18n="fig05.body">Distribution of prediction-set sizes. Singletons are confident calls; larger sets are abstentions.</p>
+            </div>
+            <img src="/plots/set_sizes.png" data-i18n-alt="fig05.alt" alt="Prediction set size distribution" loading="lazy" />
+          </figure>
+          <figure class="chart-card">
+            <div class="chart-copy">
+              <span class="figure-index" data-i18n="fig06.index">Fig. 06</span>
+              <h3 data-i18n="fig06.title">Calibration</h3>
+              <p data-i18n="fig06.body">Predicted confidence against observed accuracy before conformal post-processing.</p>
+            </div>
+            <img src="/plots/reliability.png" data-i18n-alt="fig06.alt" alt="Reliability diagram" loading="lazy" />
+          </figure>
+          <figure class="chart-card wide">
+            <div class="chart-copy">
+              <span class="figure-index" data-i18n="fig07.index">Fig. 07</span>
+              <h3 data-i18n="fig07.title">Confusion matrix</h3>
+              <p data-i18n="fig07.body">Row-normalised. Melanoma recall is the number that matters most in screening.</p>
+            </div>
+            <img src="/plots/confusion.png" data-i18n-alt="fig07.alt" alt="Confusion matrix" loading="lazy" />
+          </figure>
+        </div>
+
+        <div class="panel table-panel">
+          <div class="panel-head">
+            <div class="panel-title">
+              <span class="panel-index">08</span>
+              <h2 data-i18n="table.title">Per-class performance</h2>
+            </div>
+            <span class="hint" data-i18n="table.hint">test split</span>
+          </div>
+          <div class="table-scroll">
+            <table id="class-table">
+              <thead>
+                <tr>
+                  <th data-i18n="table.diagnosis">Diagnosis</th>
+                  <th data-i18n="table.support">Support</th>
+                  <th data-i18n="table.recall">Recall</th>
+                  <th data-i18n="table.precision">Precision</th>
+                  <th data-i18n="table.inSet">In 90% set</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================= METHOD ============================ -->
+      <section class="view" id="view-method">
+        <div class="section-head">
+          <p class="eyebrow" data-i18n="method.eyebrow"><span class="eyebrow-rule"></span>Method</p>
+          <h1 data-i18n-html="method.title">Why a prediction set <em>instead of a label.</em></h1>
+          <p class="lede" data-i18n="method.lede">
+            A classifier that is wrong 15% of the time and never says so is dangerous in screening. Conformal
+            prediction converts any classifier into one that carries a statistical guarantee, at the cost of
+            occasionally returning more than one diagnosis &mdash; or none.
+          </p>
+        </div>
+
+        <ol class="steps">
+          <li>
+            <div class="step-index">01</div>
+            <h3 data-i18n="step1.title">Frozen backbone</h3>
+            <p id="step1-body">
+              An ImageNet-pretrained EfficientNet-B0 turns each image into a 1,280-dimensional embedding. The backbone
+              stays frozen; a multinomial logistic head is fitted on the training split only.
+            </p>
+          </li>
+          <li>
+            <div class="step-index">02</div>
+            <h3 data-i18n="step2.title">Conformal calibration</h3>
+            <p data-i18n-html="step2.body">
+              On a separate calibration split we compute, per class, the
+              <code>ceil((n+1)(1&minus;&alpha;))/n</code> quantile of the nonconformity score
+              <code>1 &minus; p(y|x)</code>. At test time a class enters the prediction set when its probability
+              clears that class&rsquo;s threshold. Calibrating per class prevents the rare melanoma class from being
+              systematically under-covered.
+            </p>
+          </li>
+          <li>
+            <div class="step-index">03</div>
+            <h3 data-i18n="step3.title">Abstention</h3>
+            <p data-i18n="step3.body">
+              A set with one member is a committed answer. A set with two or more members is reported as ambiguity and
+              escalated. An empty set means no known diagnosis explains the image. The interface never hides this.
+            </p>
+          </li>
+          <li>
+            <div class="step-index">04</div>
+            <h3 data-i18n="step4.title">Out-of-domain gate</h3>
+            <p data-i18n="step4.body">
+              Inputs are scored by Mahalanobis distance to the nearest class-conditional embedding centre, with the
+              rejection threshold fixed at the 99th percentile of in-distribution calibration scores. Photos that are
+              not dermoscopic skin are rejected instead of being force-fitted to a diagnosis.
+            </p>
+          </li>
+          <li>
+            <div class="step-index">05</div>
+            <h3 data-i18n="step5.title">Explanation</h3>
+            <p data-i18n="step5.body">
+              Grad-CAM highlights the region driving the top class. It is a sanity check for the user, not evidence of
+              clinical validity: saliency maps can look convincing while being wrong.
+            </p>
+          </li>
+        </ol>
+
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title"><h2 data-i18n="dataset.title">Dataset</h2></div></div>
+            <p id="dataset-copy" class="body-copy"></p>
+            <p class="body-copy" data-i18n="dataset.classes">
+              Seven diagnostic classes: actinic keratosis, basal cell carcinoma, benign keratosis, dermatofibroma,
+              melanoma, melanocytic nevus, and vascular lesions.
+            </p>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title"><h2 data-i18n="limits.title">Known limitations</h2></div></div>
+            <ul class="limitations">
+              <li data-i18n-html="limits.skinTone">
+                <b>Skin-tone coverage.</b> HAM10000 is predominantly lighter-skinned. Performance on darker skin is
+                not established, and models in this space are known to degrade there.
+              </li>
+              <li data-i18n-html="limits.dermoscopy">
+                <b>Dermoscopy only.</b> The model was trained on specialist dermoscopic images, not smartphone photos.
+                The out-of-domain gate mitigates this but does not solve it.
+              </li>
+              <li data-i18n-html="limits.classes">
+                <b>Seven classes.</b> The real differential is far wider. A confidently classified image can still be
+                something the model has no class for.
+              </li>
+              <li data-i18n-html="limits.medical">
+                <b>Not a medical device.</b> This is a research prototype submitted to a student hackathon. It must
+                not be used for clinical decisions.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-mark">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M16 4l9 3.4v7.8c0 5.6-3.8 9.4-9 11.2-5.2-1.8-9-5.6-9-11.2V7.4L16 4z" />
+          <circle cx="16" cy="15" r="3.6" />
+        </svg>
+        <span>Sentinel Derm</span>
+      </div>
+      <p data-i18n-html="footer.disclaimer">
+        <b>Research prototype.</b> Not a medical device and not for clinical use. Always consult a qualified clinician
+        about a skin lesion.
+      </p>
+      <p class="footer-meta" id="footer-meta"></p>
+    </footer>
+
+    <div class="demo-bar" id="demo-bar" aria-live="polite" hidden>
+      <span class="demo-bar-badge"><span class="demo-bar-dot" aria-hidden="true"></span><span data-i18n="demo.badge">DEMO MODE</span></span>
+      <span class="demo-bar-text" data-i18n="demo.barText">Fictional data only — nothing is saved to your account or journal.</span>
+      <button class="demo-bar-exit" id="demo-exit" type="button" data-i18n="demo.exit">Exit demo</button>
+    </div>
+
+    <div class="journal-lightbox" id="journal-lightbox" hidden>
+      <button class="journal-lightbox-close" id="journal-lightbox-close" type="button" data-i18n-aria-label="journal.close" aria-label="Close">×</button>
+      <img id="journal-lightbox-image" alt="" />
+      <p id="journal-lightbox-caption"></p>
+    </div>
+
+    <script src="/static/i18n.js" defer></script>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

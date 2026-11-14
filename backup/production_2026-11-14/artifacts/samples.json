@@ -1,0 +1,182 @@
+[
+  {
+    "image_id": "ISIC_0032970",
+    "true_class": "mel",
+    "tag": "clear melanoma",
+    "set_size": 1,
+    "probabilities": {
+      "akiec": 0.0002,
+      "bcc": 0.0008,
+      "bkl": 0.0029,
+      "df": 0.0002,
+      "mel": 0.993,
+      "nv": 0.0029,
+      "vasc": 0.0001
+    }
+  },
+  {
+    "image_id": "ISIC_0032531",
+    "true_class": "mel",
+    "tag": "clear melanoma",
+    "set_size": 1,
+    "probabilities": {
+      "akiec": 0.0019,
+      "bcc": 0.0091,
+      "bkl": 0.01,
+      "df": 0.0003,
+      "mel": 0.971,
+      "nv": 0.0074,
+      "vasc": 0.0003
+    }
+  },
+  {
+    "image_id": "ISIC_0028361",
+    "true_class": "mel",
+    "tag": "clear melanoma",
+    "set_size": 1,
+    "probabilities": {
+      "akiec": 0.008,
+      "bcc": 0.0003,
+      "bkl": 0.0408,
+      "df": 0.0001,
+      "mel": 0.9494,
+      "nv": 0.0007,
+      "vasc": 0.0008
+    }
+  },
+  {
+    "image_id": "ISIC_0025768",
+    "true_class": "nv",
+    "tag": "clear nevus",
+    "set_size": 1,
+    "probabilities": {
+      "akiec": 0.0,
+      "bcc": 0.0,
+      "bkl": 0.0001,
+      "df": 0.0001,
+      "mel": 0.0002,
+      "nv": 0.9995,
+      "vasc": 0.0001
+    }
+  },
+  {
+    "image_id": "ISIC_0030538",
+    "true_class": "nv",
+    "tag": "clear nevus",
+    "set_size": 1,
+    "probabilities": {
+      "akiec": 0.0,
+      "bcc": 0.0,
+      "bkl": 0.0002,
+      "df": 0.0,
+      "mel": 0.0002,
+      "nv": 0.9995,
+      "vasc": 0.0001
+    }
+  },
+  {
+    "image_id": "ISIC_0028841",
+    "true_class": "nv",
+    "tag": "clear nevus",
+    "set_size": 1,
+    "probabilities": {
+      "akiec": 0.0,
+      "bcc": 0.0,
+      "bkl": 0.0001,
+      "df": 0.0001,
+      "mel": 0.0002,
+      "nv": 0.9992,
+      "vasc": 0.0003
+    }
+  },
+  {
+    "image_id": "ISIC_0031979",
+    "true_class": "nv",
+    "tag": "ambiguous",
+    "set_size": 2,
+    "probabilities": {
+      "akiec": 0.0001,
+      "bcc": 0.0001,
+      "bkl": 0.0011,
+      "df": 0.0005,
+      "mel": 0.0014,
+      "nv": 0.9942,
+      "vasc": 0.0025
+    }
+  },
+  {
+    "image_id": "ISIC_0025354",
+    "true_class": "nv",
+    "tag": "ambiguous",
+    "set_size": 2,
+    "probabilities": {
+      "akiec": 0.0,
+      "bcc": 0.0001,
+      "bkl": 0.0012,
+      "df": 0.0006,
+      "mel": 0.0003,
+      "nv": 0.9941,
+      "vasc": 0.0036
+    }
+  },
+  {
+    "image_id": "ISIC_0025291",
+    "true_class": "nv",
+    "tag": "ambiguous",
+    "set_size": 2,
+    "probabilities": {
+      "akiec": 0.0003,
+      "bcc": 0.0004,
+      "bkl": 0.0012,
+      "df": 0.0007,
+      "mel": 0.0005,
+      "nv": 0.9936,
+      "vasc": 0.0032
+    }
+  },
+  {
+    "image_id": "ISIC_0026570",
+    "true_class": "nv",
+    "tag": "ambiguous",
+    "set_size": 2,
+    "probabilities": {
+      "akiec": 0.0001,
+      "bcc": 0.0002,
+      "bkl": 0.0012,
+      "df": 0.0013,
+      "mel": 0.0008,
+      "nv": 0.9936,
+      "vasc": 0.0028
+    }
+  },
+  {
+    "image_id": "ISIC_0029288",
+    "true_class": "bkl",
+    "tag": "benign keratosis",
+    "set_size": 1,
+    "probabilities": {
+      "akiec": 0.0003,
+      "bcc": 0.0,
+      "bkl": 0.9926,
+      "df": 0.0001,
+      "mel": 0.0029,
+      "nv": 0.0041,
+      "vasc": 0.0
+    }
+  },
+  {
+    "image_id": "ISIC_0030189",
+    "true_class": "bkl",
+    "tag": "benign keratosis",
+    "set_size": 1,
+    "probabilities": {
+      "akiec": 0.0007,
+      "bcc": 0.0001,
+      "bkl": 0.9831,
+      "df": 0.0001,
+      "mel": 0.0046,
+      "nv": 0.0113,
+      "vasc": 0.0
+    }
+  }
+]

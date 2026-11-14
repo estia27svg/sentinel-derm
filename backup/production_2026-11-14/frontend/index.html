@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sentinel Derm - uncertainty-aware skin triage</title>
+    <meta
+      name="description"
+      content="A dermatology triage prototype that returns conformal prediction sets and abstains on ambiguous or out-of-domain images."
+    />
+    <meta name="theme-color" content="#F6F1E6" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23F6F1E6'/%3E%3Cpath d='M16 6l8 3v7c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V9l8-3z' fill='none' stroke='%231F4A3A' stroke-width='1.6'/%3E%3Ccircle cx='16' cy='15' r='3.2' fill='%231F4A3A'/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..600;1,9..144,300..600&family=Instrument+Sans:ital,wght@0,400..600;1,400..600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#analyze" data-view="analyze" aria-label="Sentinel Derm home">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M16 4l9 3.4v7.8c0 5.6-3.8 9.4-9 11.2-5.2-1.8-9-5.6-9-11.2V7.4L16 4z" />
+          <circle cx="16" cy="15" r="3.6" />
+        </svg>
+        <span>Sentinel<b>Derm</b></span>
+      </a>
+      <nav class="tabs" aria-label="Views">
+        <button class="tab is-active" data-view="analyze">Analyze</button>
+        <button class="tab" data-view="evidence">Evidence</button>
+        <button class="tab" data-view="method">Method</button>
+      </nav>
+      <div class="topbar-meta" id="topbar-meta" aria-live="polite"></div>
+    </header>
+
+    <main>
+      <!-- ============================ ANALYZE ============================ -->
+      <section class="view is-active" id="view-analyze">
+        <div class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow"><span class="eyebrow-rule"></span>AI &times; Healthcare &middot; DSH Hacks V2</p>
+            <h1>Triage that knows <em>when it does not know.</em></h1>
+            <p class="lede">
+              A dermatology screening aid built on <strong>conformal prediction</strong>. Instead of forcing one
+              label, it returns the set of diagnoses that cannot be ruled out at a 90% coverage guarantee &mdash; and
+              refuses to answer when the image is ambiguous, blurry, or not a dermoscopic field.
+            </p>
+            <div class="hero-stats" id="hero-stats">
+              <div class="stat"><span class="stat-value">&mdash;</span><span class="stat-label">loading</span></div>
+            </div>
+            <p class="hero-note">
+              Research prototype &middot; CPU inference &middot; images are analysed in memory and never stored
+            </p>
+          </div>
+
+          <figure class="hero-plates" aria-label="Example dermoscopic fields from the held-out test set">
+            <div class="plate plate-main">
+              <img src="/static/assets/field-melanoma.jpg" alt="Dermoscopic field of a melanoma" />
+              <figcaption><span>Fig. 01</span>Melanoma &middot; dermoscopic field</figcaption>
+            </div>
+            <div class="plate plate-inset">
+              <img src="/static/assets/field-nevus.jpg" alt="Dermoscopic field of a melanocytic nevus" />
+              <figcaption><span>Fig. 02</span>Melanocytic nevus</figcaption>
+            </div>
+            <span class="plate-register" aria-hidden="true">HAM10000 &middot; 10,015 fields</span>
+          </figure>
+        </div>
+
+        <div class="hero-rail" aria-hidden="true">
+          <span>Calibrated uncertainty</span>
+          <span>Class-conditional coverage</span>
+          <span>Out-of-domain rejection</span>
+          <span>Lesion-level evaluation</span>
+        </div>
+
+        <div class="workspace">
+          <div class="panel input-panel">
+            <div class="panel-head">
+              <div class="panel-title">
+                <span class="panel-index">01</span>
+                <h2>Submit a field</h2>
+              </div>
+              <span class="hint">Dermoscopy only</span>
+            </div>
+
+            <label class="dropzone" id="dropzone" for="file-input" tabindex="0">
+              <input id="file-input" type="file" accept="image/*" hidden />
+              <svg class="dropzone-icon" viewBox="0 0 48 48" aria-hidden="true">
+                <rect x="6" y="9" width="36" height="30" rx="5" />
+                <path d="M6 33l10-9 7 6 6-5 13 11" />
+                <circle cx="33" cy="17" r="2.6" />
+              </svg>
+              <strong>Drop a dermoscopic image, or browse</strong>
+              <span>JPEG or PNG &middot; up to 12 MB &middot; minimum 96 px</span>
+            </label>
+
+            <div class="preview-wrap" id="preview-wrap" hidden>
+              <img id="preview" alt="Uploaded lesion preview" />
+              <div class="preview-actions">
+                <span id="preview-name" class="preview-name"></span>
+                <button class="ghost-button" id="clear-button" type="button">Replace image</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel result-panel" id="result-panel">
+            <div class="empty-state" id="empty-state">
+              <div class="empty-graphic" aria-hidden="true">
+                <span class="ring"></span><span class="ring ring-2"></span>
+                <span class="cross hair-x"></span><span class="cross hair-y"></span>
+                <span class="dot"></span>
+              </div>
+              <p class="empty-kicker">Awaiting a field</p>
+              <h2>No analysis yet</h2>
+              <p>
+                Upload a lesion image or pick a sample case. The model returns a prediction set, a referral tier,
+                and an explanation of what it could and could not rule out.
+              </p>
+              <ul class="empty-list">
+                <li><b>90%</b> coverage guarantee on held-out data</li>
+                <li><b>Abstains</b> when the differential is ambiguous</li>
+                <li><b>Rejects</b> images outside the dermoscopic domain</li>
+              </ul>
+            </div>
+            <div id="result-body" hidden></div>
+          </div>
+        </div>
+
+        <div class="panel samples-panel">
+          <div class="samples-head">
+            <div class="panel-title">
+              <span class="panel-index">02</span>
+              <h3>Sample fields from the held-out test split</h3>
+            </div>
+            <span class="hint">click any field to run</span>
+          </div>
+          <div class="samples" id="samples" aria-live="polite">
+            <div class="samples-loading">Loading cases&hellip;</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================ EVIDENCE =========================== -->
+      <section class="view" id="view-evidence">
+        <div class="section-head">
+          <p class="eyebrow"><span class="eyebrow-rule"></span>Held-out evaluation</p>
+          <h1>Every claim, <em>measured.</em></h1>
+          <p class="lede">
+            All numbers below come from images the model never saw during training, calibration, or model selection.
+            Splits are made by <strong>lesion</strong>, not by image, so near-duplicate photographs cannot leak
+            between sets.
+          </p>
+        </div>
+
+        <div class="metric-grid" id="metric-grid"></div>
+
+        <div class="chart-grid" id="chart-grid">
+          <figure class="chart-card">
+            <div class="chart-copy">
+              <span class="figure-index">Fig. 03</span>
+              <h3>Coverage guarantee holds</h3>
+              <p>Requested coverage versus the coverage actually achieved on the test split.</p>
+            </div>
+            <img src="/plots/coverage_sweep.png" alt="Empirical coverage versus target coverage" loading="lazy" />
+          </figure>
+          <figure class="chart-card">
+            <div class="chart-copy">
+              <span class="figure-index">Fig. 04</span>
+              <h3>Risk&ndash;coverage trade-off</h3>
+              <p>Accuracy among the cases the model answers, as the answered fraction grows.</p>
+            </div>
+            <img src="/plots/risk_coverage.png" alt="Accuracy versus fraction of cases answered" loading="lazy" />
+          </figure>
+          <figure class="chart-card">
+            <div class="chart-copy">
+              <span class="figure-index">Fig. 05</span>
+              <h3>How often it commits</h3>
+              <p>Distribution of prediction-set sizes. Singletons are confident calls; larger sets are abstentions.</p>
+            </div>
+            <img src="/plots/set_sizes.png" alt="Prediction set size distribution" loading="lazy" />
+          </figure>
+          <figure class="chart-card">
+            <div class="chart-copy">
+              <span class="figure-index">Fig. 06</span>
+              <h3>Calibration</h3>
+              <p>Predicted confidence against observed accuracy before conformal post-processing.</p>
+            </div>
+            <img src="/plots/reliability.png" alt="Reliability diagram" loading="lazy" />
+          </figure>
+          <figure class="chart-card wide">
+            <div class="chart-copy">
+              <span class="figure-index">Fig. 07</span>
+              <h3>Confusion matrix</h3>
+              <p>Row-normalised. Melanoma recall is the number that matters most in screening.</p>
+            </div>
+            <img src="/plots/confusion.png" alt="Confusion matrix" loading="lazy" />
+          </figure>
+        </div>
+
+        <div class="panel table-panel">
+          <div class="panel-head">
+            <div class="panel-title">
+              <span class="panel-index">08</span>
+              <h2>Per-class performance</h2>
+            </div>
+            <span class="hint">test split</span>
+          </div>
+          <div class="table-scroll">
+            <table id="class-table">
+              <thead>
+                <tr>
+                  <th>Diagnosis</th>
+                  <th>Support</th>
+                  <th>Recall</th>
+                  <th>Precision</th>
+                  <th>In 90% set</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================= METHOD ============================ -->
+      <section class="view" id="view-method">
+        <div class="section-head">
+          <p class="eyebrow"><span class="eyebrow-rule"></span>Method</p>
+          <h1>Why a prediction set <em>instead of a label.</em></h1>
+          <p class="lede">
+            A classifier that is wrong 15% of the time and never says so is dangerous in screening. Conformal
+            prediction converts any classifier into one that carries a statistical guarantee, at the cost of
+            occasionally returning more than one diagnosis &mdash; or none.
+          </p>
+        </div>
+
+        <ol class="steps">
+          <li>
+            <div class="step-index">01</div>
+            <h3>Frozen backbone</h3>
+            <p>
+              An ImageNet-pretrained EfficientNet-B0 turns each image into a 1,280-dimensional embedding. The backbone
+              stays frozen; a multinomial logistic head is fitted on the training split only.
+            </p>
+          </li>
+          <li>
+            <div class="step-index">02</div>
+            <h3>Conformal calibration</h3>
+            <p>
+              On a separate calibration split we compute, per class, the
+              <code>ceil((n+1)(1&minus;&alpha;))/n</code> quantile of the nonconformity score
+              <code>1 &minus; p(y|x)</code>. At test time a class enters the prediction set when its probability
+              clears that class&rsquo;s threshold. Calibrating per class prevents the rare melanoma class from being
+              systematically under-covered.
+            </p>
+          </li>
+          <li>
+            <div class="step-index">03</div>
+            <h3>Abstention</h3>
+            <p>
+              A set with one member is a committed answer. A set with two or more members is reported as ambiguity and
+              escalated. An empty set means no known diagnosis explains the image. The interface never hides this.
+            </p>
+          </li>
+          <li>
+            <div class="step-index">04</div>
+            <h3>Out-of-domain gate</h3>
+            <p>
+              Inputs are scored by Mahalanobis distance to the nearest class-conditional embedding centre, with the
+              rejection threshold fixed at the 99th percentile of in-distribution calibration scores. Photos that are
+              not dermoscopic skin are rejected instead of being force-fitted to a diagnosis.
+            </p>
+          </li>
+          <li>
+            <div class="step-index">05</div>
+            <h3>Explanation</h3>
+            <p>
+              Grad-CAM highlights the region driving the top class. It is a sanity check for the user, not evidence of
+              clinical validity: saliency maps can look convincing while being wrong.
+            </p>
+          </li>
+        </ol>
+
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title"><h2>Dataset</h2></div></div>
+            <p id="dataset-copy" class="body-copy"></p>
+            <p class="body-copy">
+              Seven diagnostic classes: actinic keratosis, basal cell carcinoma, benign keratosis, dermatofibroma,
+              melanoma, melanocytic nevus, and vascular lesions.
+            </p>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><div class="panel-title"><h2>Known limitations</h2></div></div>
+            <ul class="limitations">
+              <li>
+                <b>Skin-tone coverage.</b> HAM10000 is predominantly lighter-skinned. Performance on darker skin is
+                not established, and models in this space are known to degrade there.
+              </li>
+              <li>
+                <b>Dermoscopy only.</b> The model was trained on specialist dermoscopic images, not smartphone photos.
+                The out-of-domain gate mitigates this but does not solve it.
+              </li>
+              <li>
+                <b>Seven classes.</b> The real differential is far wider. A confidently classified image can still be
+                something the model has no class for.
+              </li>
+              <li>
+                <b>Not a medical device.</b> This is a research prototype submitted to a student hackathon. It must
+                not be used for clinical decisions.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-mark">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M16 4l9 3.4v7.8c0 5.6-3.8 9.4-9 11.2-5.2-1.8-9-5.6-9-11.2V7.4L16 4z" />
+          <circle cx="16" cy="15" r="3.6" />
+        </svg>
+        <span>Sentinel Derm</span>
+      </div>
+      <p>
+        <b>Research prototype.</b> Not a medical device and not for clinical use. Always consult a qualified clinician
+        about a skin lesion.
+      </p>
+      <p class="footer-meta" id="footer-meta"></p>
+    </footer>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
