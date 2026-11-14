@@ -74,9 +74,9 @@ python -m pytest -q                      # conformal unit tests
 
 ## Deploy to Render
 
-`render.yaml` defines a free-plan Python web service. The build installs CPU-only torch wheels first so the multi-gigabyte CUDA wheels are never downloaded, then installs the rest of `requirements.txt`. The start command is `uvicorn backend.app:app --host 0.0.0.0 --port $PORT`; the health check is `/api/health`.
+`render.yaml` defines a free-plan Python web service pinned to Python 3.12. `requirements.txt` pins CPU-only `torch` and `torchvision` from the PyTorch index, so the build never downloads CUDA/NVIDIA wheels. The build command is `pip install --upgrade pip && pip install -r requirements.txt`; the start command is `uvicorn backend.app:app --host 0.0.0.0 --port $PORT`; the health check is `/api/health`.
 
-Push the repository to GitHub and point Render at it, or create a Blueprint from `render.yaml`. No dataset is required in the image: the model artifacts and demo images are bundled.
+If the Render service was created manually instead of from the Blueprint, set the same build command, start command, and `PYTHON_VERSION=3.12.7` in the Render dashboard. Push the repository to GitHub and point Render at it, or create a Blueprint from `render.yaml`. No dataset is required in the image: the model artifacts and demo images are bundled.
 
 ## Known limitations
 
